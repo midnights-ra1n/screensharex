@@ -1,0 +1,6 @@
+[Unit]
+Description=Install a ScreenShareX release requested from the web UI
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/screensharex/update.sh

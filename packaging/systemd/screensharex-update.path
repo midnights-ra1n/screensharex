@@ -1,0 +1,8 @@
+[Unit]
+Description=Watch for ScreenShareX update requests from the web UI
+
+[Path]
+PathExists=/var/lib/screensharex/update-request
+
+[Install]
+WantedBy=multi-user.target

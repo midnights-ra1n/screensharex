@@ -1,0 +1,6 @@
+# ScreenShareX — restart the service after editing: systemctl restart screensharex
+SSX_ADDR=:8080
+# Public URL used in generated links (recommended behind a reverse proxy)
+#SSX_BASE_URL=https://img.example.com
+# Optional Redis-protocol cache (Valkey, KeyDB, Dragonfly, Redis), e.g. apt install valkey-server
+#SSX_REDIS=redis://127.0.0.1:6379/0

@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+# Data in /var/lib/screensharex is kept, even on purge.
+if [ "$1" = remove ] && [ -d /run/systemd/system ]; then
+  systemctl disable --now screensharex.service screensharex-update.path >/dev/null || true
+fi

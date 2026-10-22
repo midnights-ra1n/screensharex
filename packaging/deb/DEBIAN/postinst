@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+if [ "$1" = configure ]; then
+  getent passwd screensharex >/dev/null || adduser --system --group --home /var/lib/screensharex --no-create-home screensharex
+  mkdir -p /var/lib/screensharex
+  chown screensharex:screensharex /var/lib/screensharex
+  chmod 750 /var/lib/screensharex
+  if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload
+    systemctl enable screensharex.service screensharex-update.path >/dev/null
+    systemctl restart screensharex.service
+    systemctl start screensharex-update.path
+  fi
+fi

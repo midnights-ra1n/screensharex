@@ -1,0 +1,21 @@
+[Unit]
+Description=ScreenShareX media host
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=screensharex
+Group=screensharex
+Environment=SSX_DATA=/var/lib/screensharex
+EnvironmentFile=-/etc/default/screensharex
+ExecStart=/usr/bin/screensharex
+Restart=always
+RestartSec=2
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/screensharex
+
+[Install]
+WantedBy=multi-user.target
