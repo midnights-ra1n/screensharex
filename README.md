@@ -50,8 +50,7 @@ curl -H "Authorization: Bearer <jeton>" -F "file=@capture.png" https://img.examp
 ## Développement
 
 ```sh
-make dev                     # backend sur :8080
-cd web && npm run dev        # interface sur :5173 (proxy /api)
+make dev                     # serveur + interface sur :8080, frontend recompilé à chaque modification
 make test                    # build du frontend + go vet + go test
 make deb VERSION=v0.1.0      # dist/screensharex_0.1.0_amd64.deb
 ```

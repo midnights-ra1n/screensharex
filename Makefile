@@ -15,6 +15,6 @@ test: web
 deb: build
 	packaging/build-deb.sh dist/screensharex-linux-amd64 $(VERSION) $(REPO) dist
 
-# Backend on :8080, then `cd web && npm run dev` for the hot-reloading UI on :5173.
+# Single UI on :8080, served from web/dist and rebuilt on every frontend change (refresh the page).
 dev:
-	SSX_DATA=./data go run .
+	cd web && npm run watch & SSX_DATA=./data SSX_WEB_DIR=web/dist go run .

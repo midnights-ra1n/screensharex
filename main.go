@@ -118,6 +118,9 @@ func (a *App) routes() http.Handler {
 	m.HandleFunc("DELETE /{slug}/delete/{key}", a.deleteByKey)
 
 	dist, _ := fs.Sub(web.Dist, "dist")
+	if dir := os.Getenv("SSX_WEB_DIR"); dir != "" { // dev: serve the UI from disk, rebuilt by `vite build --watch`
+		dist = os.DirFS(dir)
+	}
 	files := http.FileServerFS(dist)
 	m.Handle("GET /assets/", files)
 	m.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {

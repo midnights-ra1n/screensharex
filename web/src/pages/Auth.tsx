@@ -14,6 +14,7 @@ export function Auth({ onDone }: { onDone: () => void }) {
   const submit = async (e: Event) => {
     e.preventDefault()
     const f = new FormData(e.target as HTMLFormElement)
+    if (mode === 'register' && f.get('password') !== f.get('confirm')) return setError('Les mots de passe ne correspondent pas')
     setBusy(true)
     setError('')
     try {
@@ -36,14 +37,19 @@ export function Auth({ onDone }: { onDone: () => void }) {
         </p>
         {info?.registration && !info.setup && (
           <div class="tabs" role="tablist">
-            <button type="button" role="tab" aria-selected={mode === 'login'} onClick={() => setMode('login')}>Connexion</button>
-            <button type="button" role="tab" aria-selected={mode === 'register'} onClick={() => setMode('register')}>Inscription</button>
+            <button type="button" role="tab" aria-selected={mode === 'login'} onClick={() => { setMode('login'); setError('') }}>Connexion</button>
+            <button type="button" role="tab" aria-selected={mode === 'register'} onClick={() => { setMode('register'); setError('') }}>Inscription</button>
           </div>
         )}
         <label>Nom d'utilisateur<input name="username" autocomplete="username" required minLength={3} maxLength={32} /></label>
         <label>Mot de passe
           <input name="password" type="password" autocomplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={8} maxLength={72} />
         </label>
+        {mode === 'register' && (
+          <label>Confirmer le mot de passe
+            <input name="confirm" type="password" autocomplete="new-password" required minLength={8} maxLength={72} />
+          </label>
+        )}
         {error && <p class="error" role="alert">{error}</p>}
         <button class="primary" disabled={busy}>{mode === 'login' ? 'Se connecter' : 'Créer le compte'}</button>
         <p class="muted small">{info?.version}</p>

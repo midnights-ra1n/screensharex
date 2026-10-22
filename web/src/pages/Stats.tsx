@@ -21,9 +21,13 @@ const duration = (s: number) => {
   return d ? `${d} j ${h} h` : h ? `${h} h ${m} min` : `${m} min`
 }
 
+const dayLabel = (d: string) =>
+  new Date(d + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+
 export function Stats({ me }: { me: Me }) {
   const [scope, setScope] = useState<'me' | 'server'>(me.user.is_admin ? 'server' : 'me')
   const [s, setS] = useState<StatsData>()
+  const [hover, setHover] = useState<number | null>(null)
 
   useEffect(() => {
     api<StatsData>(`/stats?scope=${scope}`).then(setS, (e) => toast(e.message, true))
@@ -64,10 +68,20 @@ export function Stats({ me }: { me: Me }) {
 
       <section class="card">
         <h2>Envois sur 30 jours</h2>
-        <div class="bars" role="img" aria-label="Nombre d'envois par jour sur 30 jours">
-          {days.map((d) => (
-            <div class="bar" title={`${d.day} : ${d.count} envoi(s), ${size(d.size)}`}>
+        <div class="bars" aria-label="Nombre d'envois par jour sur 30 jours" onMouseLeave={() => setHover(null)}>
+          {days.map((d, i) => (
+            <div class={'bar' + (hover === i ? ' hover' : '')} tabIndex={0}
+              aria-label={`${dayLabel(d.day)} : ${d.count} envoi(s), ${size(d.size)}`}
+              onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} onBlur={() => setHover(null)} onClick={() => setHover(i)}>
               <div style={{ height: `${(d.count / peak) * 100}%` }} />
+              {hover === i && (
+                // Sits just above the bar top (kept inside the chart); edge bars flip their alignment so the tooltip stays on screen.
+                <div class={'tooltip' + (i < 4 ? ' left' : i > 25 ? ' right' : '')} role="tooltip" style={{ '--h': `${(d.count / peak) * 100}%` }}>
+                  <strong>{dayLabel(d.day)}</strong>
+                  <span>{d.count} envoi{d.count > 1 ? 's' : ''}</span>
+                  <span class="muted">{size(d.size)}</span>
+                </div>
+              )}
             </div>
           ))}
         </div>
