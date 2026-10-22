@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { api, date, size, type User } from '../api'
 import { attempt, Icon, Meter, toast } from '../ui'
 
-type Settings = { registration: number; default_quota: number; max_upload: number; uploads_per_hour: number; compress: number }
+type Settings = { registration: number; default_quota: number; max_upload: number; max_upload_api: number; uploads_per_hour: number; uploads_per_hour_api: number; compress: number }
 type Row = { user: User; count: number; used: number; quota: number }
 type Update = { current: string; available: boolean; mode: 'deb' | 'docker' | 'manual'; latest: { tag_name: string; body: string; html_url: string; published_at: string } }
 
@@ -45,8 +45,10 @@ function ServerSettings() {
         <label class="switch"><input type="checkbox" checked={s.compress === 1} onChange={(e) => setS({ ...s, compress: e.currentTarget.checked ? 1 : 0 })} />
           <span>Créer des versions légères (ffmpeg)</span></label>
         <label>Quota par défaut (Mo, 0 = illimité)<input type="number" min={0} {...num('default_quota', MB)} /></label>
-        <label>Taille max par fichier (Mo)<input type="number" min={1} {...num('max_upload', MB)} /></label>
-        <label>Envois max par heure et par utilisateur (0 = illimité)<input type="number" min={0} {...num('uploads_per_hour')} /></label>
+        <label>Taille max par fichier depuis le site web (Mo)<input type="number" min={1} {...num('max_upload', MB)} /></label>
+        <label>Taille max par fichier depuis les applications (Mo)<input type="number" min={1} {...num('max_upload_api', MB)} /></label>
+        <label>Envois max par heure depuis le site web (0 = illimité)<input type="number" min={0} {...num('uploads_per_hour')} /></label>
+        <label>Envois max par heure depuis les applications (ShareX, scripts…) (0 = illimité)<input type="number" min={0} {...num('uploads_per_hour_api')} /></label>
         <button class="primary">Enregistrer</button>
       </form>
     </section>

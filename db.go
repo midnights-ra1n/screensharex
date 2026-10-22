@@ -48,11 +48,13 @@ CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 
 // Server-wide settings editable by admins, with their defaults.
 var defaultSettings = map[string]string{
-	"registration":     "0",                     // 1 = anyone can create an account
-	"default_quota":    strconv.Itoa(1 << 30),   // bytes per user, 0 = unlimited
-	"max_upload":       strconv.Itoa(100 << 20), // bytes per file
-	"uploads_per_hour": "120",                   // per user, 0 = unlimited
-	"compress":         "1",                     // build lightweight variants with ffmpeg
+	"registration":         "0",                     // 1 = anyone can create an account
+	"default_quota":        strconv.Itoa(1 << 30),   // bytes per user, 0 = unlimited
+	"max_upload":           strconv.Itoa(100 << 20), // bytes per file from the web UI
+	"max_upload_api":       strconv.Itoa(100 << 20), // bytes per file from desktop/CLI clients
+	"uploads_per_hour":     "120",                   // per user from the web UI, 0 = unlimited
+	"uploads_per_hour_api": "120",                   // per user from desktop/CLI clients (API token), 0 = unlimited
+	"compress":             "1",                     // build lightweight variants with ffmpeg
 }
 
 func openDB(path string) (*sql.DB, error) {
@@ -64,6 +66,8 @@ func openDB(path string) (*sql.DB, error) {
 	if _, err := db.Exec(schema); err != nil {
 		return nil, err
 	}
+	// Columns added after the first release; the error just means the column already exists.
+	db.Exec(`ALTER TABLE media ADD COLUMN via_api INTEGER NOT NULL DEFAULT 0`)
 	for k, v := range defaultSettings {
 		if _, err := db.Exec(`INSERT OR IGNORE INTO settings(key, value) VALUES(?, ?)`, k, v); err != nil {
 			return nil, err

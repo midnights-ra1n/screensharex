@@ -114,15 +114,28 @@ func TestFlow(t *testing.T) {
 	if code, out := uploadFile(t, http.DefaultClient, srv.URL, token, "b.png", append(png, 2)); code != 413 {
 		t.Fatal("quota not enforced", code, out)
 	}
-	call(t, c, "PUT", srv.URL+"/api/admin/settings", map[string]int64{"default_quota": 0})
+	call(t, c, "PUT", srv.URL+"/api/admin/settings", map[string]int64{"default_quota": 0, "max_upload_api": 5000, "max_upload": 8000})
 	if code, _ := uploadFile(t, http.DefaultClient, srv.URL, token, "big.png", make([]byte, 6000)); code != 413 {
-		t.Fatal("max upload not enforced", code)
+		t.Fatal("app max upload not enforced", code)
+	}
+	if code, out := uploadFile(t, c, srv.URL, "", "big-web.png", make([]byte, 6000)); code != 200 {
+		t.Fatal("web upload should use its own size limit", code, out)
+	}
+	if code, _ := uploadFile(t, c, srv.URL, "", "huge-web.png", make([]byte, 9000)); code != 413 {
+		t.Fatal("web max upload not enforced", code)
 	}
 
-	// Rate limit.
-	call(t, c, "PUT", srv.URL+"/api/admin/settings", map[string]int64{"uploads_per_hour": 2})
+	// Separate rate limits: desktop clients (token) are capped while the web UI (session) still uploads.
+	call(t, c, "PUT", srv.URL+"/api/admin/settings", map[string]int64{"uploads_per_hour_api": 2, "uploads_per_hour": 10})
 	if code, _ := uploadFile(t, http.DefaultClient, srv.URL, token, "c.png", append(png, 3)); code != 429 {
-		t.Fatal("rate limit not enforced", code)
+		t.Fatal("API rate limit not enforced", code)
+	}
+	if code, out := uploadFile(t, c, srv.URL, "", "web.png", append(png, 4)); code != 200 {
+		t.Fatal("web upload should use its own limit", code, out)
+	}
+	call(t, c, "PUT", srv.URL+"/api/admin/settings", map[string]int64{"uploads_per_hour": 1})
+	if code, _ := uploadFile(t, c, srv.URL, "", "web2.png", append(png, 5)); code != 429 {
+		t.Fatal("web rate limit not enforced", code)
 	}
 
 	// Delete by key removes the blob.

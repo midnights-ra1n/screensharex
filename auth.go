@@ -40,13 +40,13 @@ func randString(n int) string { return rand.Text()[:n] } // base32, 26 chars max
 const sessionCookie = "ssx_session"
 
 // authUser resolves the caller from the session cookie, a Bearer token, or a "token" form/query field
-// (some capture tools can only send form fields).
-func (a *App) authUser(r *http.Request) *User {
+// (some capture tools can only send form fields). viaToken is true for desktop/CLI clients, false for the web UI.
+func (a *App) authUser(r *http.Request) (u *User, viaToken bool) {
 	if c, err := r.Cookie(sessionCookie); err == nil {
 		u, err := scanUser(a.db.QueryRow(`SELECT `+userCols+` FROM users WHERE id = (SELECT user_id FROM sessions WHERE token = ? AND expires_at > ?)`,
 			c.Value, time.Now().Unix()))
 		if err == nil {
-			return u
+			return u, false
 		}
 	}
 	tok := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
@@ -57,20 +57,20 @@ func (a *App) authUser(r *http.Request) *User {
 		tok = r.FormValue("token")
 	}
 	if tok == "" {
-		return nil
+		return nil, false
 	}
 	u, err := scanUser(a.db.QueryRow(`SELECT `+userCols+` FROM users WHERE api_token = ?`, tok))
 	if err != nil {
-		return nil
+		return nil, false
 	}
-	return u
+	return u, true
 }
 
 type userHandler func(http.ResponseWriter, *http.Request, *User)
 
 func (a *App) user(h userHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		u := a.authUser(r)
+		u, _ := a.authUser(r)
 		if u == nil {
 			fail(w, http.StatusUnauthorized, "Non connecté")
 			return

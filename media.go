@@ -67,14 +67,15 @@ func (a *App) mediaURLs(r *http.Request, m *Media) map[string]any {
 }
 
 func (a *App) upload(w http.ResponseWriter, r *http.Request) {
-	maxSize := a.setting("max_upload")
-	r.Body = http.MaxBytesReader(w, r.Body, maxSize+1<<20) // + room for multipart overhead
+	// The caller (web or app) is only known after parsing, so cap the body at the larger of both limits.
+	webMax, apiMax := a.setting("max_upload"), a.setting("max_upload_api")
+	r.Body = http.MaxBytesReader(w, r.Body, max(webMax, apiMax)+1<<20) // + room for multipart overhead
 	if err := r.ParseMultipartForm(8 << 20); err != nil {
 		fail(w, http.StatusRequestEntityTooLarge, "Fichier trop volumineux ou requête invalide")
 		return
 	}
 	defer r.MultipartForm.RemoveAll()
-	u := a.authUser(r)
+	u, viaAPI := a.authUser(r)
 	if u == nil {
 		fail(w, http.StatusUnauthorized, "Jeton invalide")
 		return
@@ -84,13 +85,17 @@ func (a *App) upload(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "Aucun fichier (champ \"file\")")
 		return
 	}
+	maxSize, limitKey := webMax, "uploads_per_hour"
+	if viaAPI {
+		maxSize, limitKey = apiMax, "uploads_per_hour_api"
+	}
 	if fh.Size > maxSize {
 		fail(w, http.StatusRequestEntityTooLarge, "Fichier trop volumineux (max "+human(maxSize)+")")
 		return
 	}
-	if limit := a.setting("uploads_per_hour"); limit > 0 {
+	if limit := a.setting(limitKey); limit > 0 {
 		var n int64
-		a.db.QueryRow(`SELECT COUNT(*) FROM media WHERE user_id = ? AND created_at > ?`, u.ID, time.Now().Add(-time.Hour).Unix()).Scan(&n)
+		a.db.QueryRow(`SELECT COUNT(*) FROM media WHERE user_id = ? AND via_api = ? AND created_at > ?`, u.ID, viaAPI, time.Now().Add(-time.Hour).Unix()).Scan(&n)
 		if n >= limit {
 			fail(w, http.StatusTooManyRequests, fmt.Sprintf("Limite de %d envois par heure atteinte", limit))
 			return
@@ -164,8 +169,8 @@ func (a *App) upload(w http.ResponseWriter, r *http.Request) {
 	for range 3 { // retry on the (unlikely) slug collision
 		m.Slug = slugify()
 		var res sql.Result
-		res, err = a.db.Exec(`INSERT INTO media(slug, user_id, hash, filename, mime, size, lite_mime, lite_size, delete_key, created_at) VALUES(?,?,?,?,?,?,?,?,?,?)`,
-			m.Slug, m.UserID, m.Hash, m.Filename, m.Mime, m.Size, m.LiteMime, m.LiteSize, m.DeleteKey, m.CreatedAt)
+		res, err = a.db.Exec(`INSERT INTO media(slug, user_id, hash, filename, mime, size, lite_mime, lite_size, delete_key, via_api, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+			m.Slug, m.UserID, m.Hash, m.Filename, m.Mime, m.Size, m.LiteMime, m.LiteSize, m.DeleteKey, viaAPI, m.CreatedAt)
 		if err == nil {
 			m.ID, _ = res.LastInsertId()
 			break
