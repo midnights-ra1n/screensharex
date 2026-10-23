@@ -146,7 +146,7 @@ main { flex: 1; min-width: 0; }
   overflow: hidden; background: var(--surface); text-align: left; min-height: 0;
 }
 .tile img, .tile video, .tile .vid, .tile .file-thumb { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: var(--surface-2); }
-.tile:hover { transform: translateY(-2px); }
+
 .vid { position: relative; }
 .badge { position: absolute; right: 8px; top: 8px; background: #000a; color: #fff; border-radius: 999px; padding: 2px 8px; font-size: 0.75rem; font-weight: 700; display: flex; }
 .badge .icon { width: 14px; height: 14px; }

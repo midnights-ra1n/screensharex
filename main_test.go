@@ -102,11 +102,17 @@ func TestFlow(t *testing.T) {
 		t.Fatal("missing og:image", page.String())
 	}
 
-	// HTML disguised as an image must not be served inline.
-	_, h := uploadFile(t, http.DefaultClient, srv.URL, token, "evil.svg", []byte(`<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>`))
-	resp, _ = http.Get(h["raw"].(string))
-	if !strings.HasPrefix(resp.Header.Get("Content-Disposition"), "attachment") {
-		t.Fatal("svg served inline", resp.Header)
+	// Only displayable media is accepted: SVG (can carry scripts), archives, documents and text are refused,
+	// even when renamed to an image extension.
+	for name, data := range map[string][]byte{
+		"evil.svg":   []byte(`<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>`),
+		"photos.zip": []byte("PK\x03\x04rest-of-zip"),
+		"report.doc": append([]byte("\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"), make([]byte, 64)...),
+		"notes.png":  []byte("just some text"),
+	} {
+		if code, out := uploadFile(t, http.DefaultClient, srv.URL, token, name, data); code != 415 {
+			t.Fatal(name, "should be refused, got", code, out)
+		}
 	}
 
 	// Quota and size limits.
@@ -125,8 +131,8 @@ func TestFlow(t *testing.T) {
 		t.Fatal("web max upload not enforced", code)
 	}
 
-	// Separate rate limits: desktop clients (token) are capped while the web UI (session) still uploads.
-	call(t, c, "PUT", srv.URL+"/api/admin/settings", map[string]int64{"uploads_per_hour_api": 2, "uploads_per_hour": 10})
+	// Separate rate limits (one token upload so far, refused files don't count): desktop clients are capped while the web UI (session) still uploads.
+	call(t, c, "PUT", srv.URL+"/api/admin/settings", map[string]int64{"uploads_per_hour_api": 1, "uploads_per_hour": 10})
 	if code, _ := uploadFile(t, http.DefaultClient, srv.URL, token, "c.png", append(png, 3)); code != 429 {
 		t.Fatal("API rate limit not enforced", code)
 	}

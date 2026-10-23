@@ -108,6 +108,23 @@ func (a *App) upload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer f.Close()
 
+	head := make([]byte, 512)
+	n, _ := io.ReadFull(f, head)
+	head = head[:n]
+	ctype := http.DetectContentType(head)
+	// Formats Go can't sniff (MOV, MKV, HEIC…) fall back to the extension.
+	// shortcut: an unrecognised binary renamed .mp4 still passes; probe with ffprobe if that matters.
+	if ctype == "application/octet-stream" {
+		if t := mime.TypeByExtension(filepath.Ext(fh.Filename)); t != "" {
+			ctype = t
+		}
+	}
+	ctype, _, _ = strings.Cut(ctype, ";")
+	if !inline(ctype) {
+		fail(w, http.StatusUnsupportedMediaType, "Type de fichier non pris en charge ("+ctype+") : images, GIF, vidéos et audio uniquement")
+		return
+	}
+
 	tmp, err := os.CreateTemp(filepath.Join(a.dataDir, "files"), "upload-*")
 	if err != nil {
 		fail(w, 500, err.Error())
@@ -115,9 +132,6 @@ func (a *App) upload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer os.Remove(tmp.Name()) // no-op once renamed
 	h := sha256.New()
-	head := make([]byte, 512)
-	n, _ := io.ReadFull(f, head)
-	head = head[:n]
 	_, err = io.Copy(io.MultiWriter(tmp, h), io.MultiReader(bytes.NewReader(head), f))
 	if cerr := tmp.Close(); err == nil {
 		err = cerr
@@ -144,14 +158,6 @@ func (a *App) upload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
-	ctype := http.DetectContentType(head)
-	if ctype == "application/octet-stream" || strings.HasPrefix(ctype, "text/plain") {
-		if t := mime.TypeByExtension(filepath.Ext(fh.Filename)); t != "" {
-			ctype = t
-		}
-	}
-	ctype, _, _ = strings.Cut(ctype, ";")
 
 	// Content-addressed storage: identical files from different users share one blob on disk.
 	dst := a.filePath(hash)

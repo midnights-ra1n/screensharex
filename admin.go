@@ -82,7 +82,7 @@ func (a *App) stats(w http.ResponseWriter, r *http.Request, u *User) {
 		}
 		out["server"] = map[string]any{
 			"users": users, "stored": stored + lite, "dedup_saved": size - stored,
-			"disk_free": int64(st.Bavail) * st.Bsize, "disk_total": int64(st.Blocks) * st.Bsize,
+			"disk_free": int64(st.Bavail) * int64(st.Bsize), "disk_total": int64(st.Blocks) * int64(st.Bsize),
 			"uptime": int64(time.Since(a.started).Seconds()), "version": version, "go": runtime.Version(),
 			"memory": mem.Sys, "goroutines": runtime.NumGoroutine(), "cache": cache, "ffmpeg": ffErr == nil,
 		}
