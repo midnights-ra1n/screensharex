@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'preact/hooks'
 import { api } from '../api'
+import { Footer } from '../ui'
 
 export function Auth({ onDone }: { onDone: () => void }) {
-  const [info, setInfo] = useState<{ registration: boolean; setup: boolean; version: string }>()
+  const [info, setInfo] = useState<{ registration: boolean; setup: boolean }>()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -52,7 +53,7 @@ export function Auth({ onDone }: { onDone: () => void }) {
         )}
         {error && <p class="error" role="alert">{error}</p>}
         <button class="primary" disabled={busy}>{mode === 'login' ? 'Se connecter' : 'Créer le compte'}</button>
-        <p class="muted small">{info?.version}</p>
+        <Footer />
       </form>
     </div>
   )

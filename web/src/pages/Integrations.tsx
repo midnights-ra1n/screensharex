@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks'
 import { api, type Me } from '../api'
-import { attempt, copy, Icon } from '../ui'
+import { attempt, confirmDialog, copy, Footer, Icon } from '../ui'
 
 const dl = (name: string) => `/api/clients/${name}`
 
@@ -9,8 +9,8 @@ export function Integrations({ me, refresh }: { me: Me; refresh: () => void }) {
   const token = me.user.api_token ?? ''
   const base = me.base_url
 
-  const regen = () => {
-    if (!confirm('Régénérer le jeton ? Tous vos clients configurés devront être mis à jour.')) return
+  const regen = async () => {
+    if (!await confirmDialog({ title: 'Régénérer le jeton ?', message: "L'ancien jeton cessera de fonctionner : tous vos clients configurés devront être mis à jour.", ok: 'Régénérer', danger: true })) return
     attempt(async () => { await api('/me/token', { method: 'POST' }); refresh() }, 'Nouveau jeton généré')
   }
 
@@ -104,6 +104,7 @@ export function Integrations({ me, refresh }: { me: Me; refresh: () => void }) {
           <li><span>Suppression</span><span class="muted"><code>DELETE delete_url</code> (ou ouvrir le lien dans un navigateur)</span></li>
         </ul>
       </section>
+      <Footer />
     </div>
   )
 }

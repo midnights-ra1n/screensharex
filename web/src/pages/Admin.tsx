@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { api, date, size, type User } from '../api'
-import { attempt, Icon, Meter, toast } from '../ui'
+import { attempt, confirmDialog, dialog, Footer, Icon, Meter, repoURL, toast, useServerInfo } from '../ui'
 
 type Settings = { registration: number; default_quota: number; max_upload: number; max_upload_api: number; uploads_per_hour: number; uploads_per_hour_api: number; compress: number }
 type Row = { user: User; count: number; used: number; quota: number }
@@ -18,6 +18,7 @@ export function Admin() {
       <Users />
       <Backup />
       <Updates />
+      <Footer />
     </div>
   )
 }
@@ -72,17 +73,24 @@ function Users() {
   }
   const patch = (u: User, body: object, ok: string) =>
     attempt(async () => { await api(`/admin/users/${u.id}`, { method: 'PATCH', body }); load() }, ok)
-  const setQuota = (u: User) => {
-    const v = prompt(`Quota de ${u.username} en Mo (vide = défaut du serveur, 0 = illimité)`, u.quota >= 0 ? String(toMB(u.quota)) : '')
+  const setQuota = async (u: User) => {
+    const v = await dialog({
+      title: `Quota de ${u.username}`, message: 'En Mo. Laissez vide pour le quota par défaut du serveur, 0 = illimité.',
+      input: { label: 'Quota (Mo)', type: 'number', min: 0, value: u.quota >= 0 ? String(toMB(u.quota)) : '', placeholder: 'Défaut du serveur' },
+      ok: 'Enregistrer',
+    })
     if (v === null) return
     patch(u, { quota: v.trim() === '' ? -1 : Math.max(0, Number(v)) * MB }, 'Quota modifié')
   }
-  const resetPassword = (u: User) => {
-    const v = prompt(`Nouveau mot de passe pour ${u.username} (8 caractères min.)`)
+  const resetPassword = async (u: User) => {
+    const v = await dialog({
+      title: `Nouveau mot de passe pour ${u.username}`, message: "L'utilisateur sera déconnecté de toutes ses sessions.",
+      input: { label: 'Mot de passe (8 caractères min.)', type: 'password', minLength: 8, maxLength: 72, required: true }, ok: 'Réinitialiser',
+    })
     if (v) patch(u, { password: v }, 'Mot de passe réinitialisé')
   }
-  const remove = (u: User) => {
-    if (confirm(`Supprimer ${u.username} et tous ses médias ?`))
+  const remove = async (u: User) => {
+    if (await confirmDialog({ title: `Supprimer ${u.username} ?`, message: 'Le compte et tous ses médias seront supprimés définitivement.', ok: 'Supprimer', danger: true }))
       attempt(async () => { await api(`/admin/users/${u.id}`, { method: 'DELETE' }); load() }, 'Utilisateur supprimé')
   }
 
@@ -135,7 +143,7 @@ function Backup() {
   const [busy, setBusy] = useState(false)
 
   const importFile = async (file: File) => {
-    if (!confirm('Importer remplace TOUTE la base de données (utilisateurs, médias, réglages). Continuer ?')) return
+    if (!await confirmDialog({ title: 'Importer cette sauvegarde ?', message: <>L'import remplace <strong>toute</strong> la base de données (utilisateurs, médias, réglages), puis redémarre le serveur.</>, ok: 'Importer', danger: true })) return
     setBusy(true)
     try {
       const res = await fetch('/api/admin/import', { method: 'POST', body: file, headers: { 'Content-Type': 'application/gzip' } })
@@ -167,8 +175,9 @@ function Updates() {
   const [u, setU] = useState<Update>()
   const [busy, setBusy] = useState(false)
   const check = () => { setBusy(true); attempt(async () => setU(await api('/admin/update'))).finally(() => setBusy(false)) }
-  const install = () => {
-    if (!u || !confirm(`Installer ${u.latest.tag_name} et redémarrer le serveur ?`)) return
+  const info = useServerInfo()
+  const install = async () => {
+    if (!u || !await confirmDialog({ title: `Installer ${u.latest.tag_name} ?`, message: 'Le serveur redémarrera sur la nouvelle version, ce qui prend quelques secondes.', ok: 'Installer et redémarrer' })) return
     setBusy(true)
     attempt(async () => { await api('/admin/update', { body: { tag: u.latest.tag_name } }); waitForRestart(u.current) }, 'Mise à jour lancée')
   }
@@ -176,13 +185,16 @@ function Updates() {
   return (
     <section class="card">
       <h2>Mises à jour</h2>
+      {info && (
+        <p>Version installée : <strong>{info.version}</strong> · <a href={`${repoURL(info)}/releases`} target="_blank" rel="noopener">toutes les versions sur GitHub</a></p>
+      )}
       {!u ? (
         <button disabled={busy} onClick={check}>{busy ? 'Recherche…' : 'Rechercher des mises à jour'}</button>
       ) : !u.available ? (
-        <p>Vous utilisez la dernière version ({u.current}).</p>
+        <p class="muted">Vous utilisez la dernière version.</p>
       ) : (
         <div class="update">
-          <p><strong>{u.latest.tag_name}</strong> est disponible (actuelle : {u.current}) · <a href={u.latest.html_url} target="_blank" rel="noopener">notes de version</a></p>
+          <p><strong>{u.latest.tag_name}</strong> est disponible · <a href={u.latest.html_url} target="_blank" rel="noopener">notes de version</a></p>
           {u.latest.body && <pre class="notes">{u.latest.body}</pre>}
           {u.mode === 'deb' && <button class="primary" disabled={busy} onClick={install}>{busy ? 'Installation…' : 'Installer et redémarrer'}</button>}
           {u.mode === 'docker' && <pre>docker compose pull && docker compose up -d</pre>}

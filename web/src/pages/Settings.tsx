@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks'
 import { api, size, type Me } from '../api'
-import { attempt, getSaver, setSaver } from '../ui'
+import { attempt, Footer, getSaver, setSaver } from '../ui'
 
 const fill = (t: string, me: Me) =>
   t.replaceAll('{filename}', 'capture.png').replaceAll('{size}', size(245760)).replaceAll('{user}', me.user.username)
@@ -80,6 +80,7 @@ export function Settings({ me, refresh }: { me: Me; refresh: () => void }) {
           <button class="primary">Modifier</button>
         </form>
       </section>
+      <Footer />
     </div>
   )
 }

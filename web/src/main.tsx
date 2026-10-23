@@ -7,14 +7,13 @@ import { Stats } from './pages/Stats'
 import { Integrations } from './pages/Integrations'
 import { Settings } from './pages/Settings'
 import { Admin } from './pages/Admin'
-import { Icon, Toasts } from './ui'
+import { Dialogs, Icon, Toasts } from './ui'
 import './style.css'
 
 const routes = [
   { path: 'gallery', label: 'Médias', icon: 'grid' },
   { path: 'stats', label: 'Stats', icon: 'chart' },
   { path: 'clients', label: 'Clients', icon: 'plug' },
-  { path: 'settings', label: 'Profil', icon: 'user' },
   { path: 'admin', label: 'Admin', icon: 'shield', admin: true },
 ] as const
 
@@ -56,10 +55,18 @@ function App() {
             </a>
           ))}
         </nav>
-        <button class="ghost logout" onClick={logout}><Icon name="logout" /> <span>Déconnexion</span></button>
+        <div class="sidebar-foot">
+          <a href="#/settings" class={'profile' + (route === 'settings' ? ' active' : '')} aria-current={route === 'settings' ? 'page' : undefined}
+            title="Profil et réglages">
+            <span class="avatar" aria-hidden="true">{me.user.username[0].toUpperCase()}</span>
+            <span class="profile-name">{me.user.username}</span>
+          </a>
+          <button class="ghost logout" onClick={logout}><Icon name="logout" /> <span>Déconnexion</span></button>
+        </div>
       </aside>
       <main>{page}</main>
       <Toasts />
+      <Dialogs />
     </div>
   )
 }

@@ -167,6 +167,7 @@ func (a *App) public(w http.ResponseWriter, r *http.Request) {
 	a.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&users)
 	writeJSON(w, 200, map[string]any{
 		"version":      version,
+		"repo":         repo,
 		"registration": a.setting("registration") == 1 || users == 0,
 		"setup":        users == 0,
 	})

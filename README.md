@@ -1,8 +1,9 @@
 <div align="center">
 
-<img src="web/public/favicon.svg" width="88" alt="ScreenShareX logo">
-
-# ScreenShareX
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/logo-dark.svg">
+  <img src="docs/logo-light.svg" width="352" alt="ScreenShareX">
+</picture>
 
 **Self-hosted screenshot, GIF and video hosting — a modern XBackBone alternative.**
 
@@ -376,7 +377,7 @@ Find your token in **Settings** or with `GET /api/me`. Regenerate it with `POST 
 Server info for the login page.
 
 ```json
-{ "version": "v1.2.0", "registration": false, "setup": false }
+{ "version": "v1.2.0", "repo": "midnights-ra1n/screensharex", "registration": false, "setup": false }
 ```
 
 `setup` is `true` while no account exists. `registration` is then also `true`.

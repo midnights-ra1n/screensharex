@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { api, date, kind, size, uploadFile, type Item, type Me } from '../api'
-import { attempt, copy, getSaver, Icon, Meter, setSaver, toast } from '../ui'
+import { attempt, confirmDialog, copy, getSaver, Icon, Meter, setSaver, toast } from '../ui'
 
 type Upload = { name: string; progress: number; error?: string }
 
@@ -60,8 +60,8 @@ export function Gallery({ me, refresh }: { me: Me; refresh: () => void }) {
     return () => removeEventListener('paste', onPaste)
   }, [])
 
-  const remove = (it: Item) => {
-    if (!confirm(`Supprimer ${it.media.filename} ?`)) return
+  const remove = async (it: Item) => {
+    if (!await confirmDialog({ title: 'Supprimer ce fichier ?', message: <><strong>{it.media.filename}</strong> sera supprimé définitivement, ainsi que son lien.</>, ok: 'Supprimer', danger: true })) return
     attempt(async () => {
       await api(`/media/${it.media.id}`, { method: 'DELETE' })
       setItems((l) => l.filter((x) => x !== it))

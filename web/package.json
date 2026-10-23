@@ -7,6 +7,7 @@
     "build": "tsc --noEmit && vite build"
   },
   "dependencies": {
+    "@material-symbols/svg-400": "^0.48.1",
     "preact": "^10.27.2"
   },
   "devDependencies": {
