@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, dev]
+    branches: [stable, dev]
     tags: ["v*"]
   pull_request:
 
@@ -10,9 +10,16 @@ permissions:
   contents: write
   packages: write
 
+# Queue runs on the same branch so two stable pushes never compute the same tag.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
 jobs:
   build:
     runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      release: ${{ steps.v.outputs.release }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -26,14 +33,26 @@ jobs:
         with:
           go-version-file: go.mod
       - run: make test
-      - run: make deb VERSION=${{ github.ref_type == 'tag' && github.ref_name || 'v0.0.0' }} REPO=${{ github.repository }}
+      # Tag push: use it as is. Push on stable: bump the patch of the highest vX.Y.Z tag.
+      - id: v
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            echo "version=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"; echo release=true >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF_NAME" = stable ]; then
+            last=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)
+            IFS=. read -r maj min pat <<< "${last:-v0.0.0}"
+            echo "version=$maj.$min.$((pat + 1))" >> "$GITHUB_OUTPUT"; echo release=true >> "$GITHUB_OUTPUT"
+          else
+            echo version=v0.0.0 >> "$GITHUB_OUTPUT"; echo release=false >> "$GITHUB_OUTPUT"
+          fi
+      - run: make deb VERSION=${{ steps.v.outputs.version }} REPO=${{ github.repository }}
       - name: Publish release
-        if: github.ref_type == 'tag'
+        if: steps.v.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           cd dist && sha256sum screensharex_*.deb screensharex-linux-amd64 > SHA256SUMS
-          gh release create "$GITHUB_REF_NAME" screensharex_*.deb screensharex-linux-amd64 SHA256SUMS --generate-notes
+          gh release create "${{ steps.v.outputs.version }}" --target "$GITHUB_SHA" screensharex_*.deb screensharex-linux-amd64 SHA256SUMS --generate-notes
 
   docker:
     runs-on: ubuntu-24.04
@@ -52,8 +71,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{version}},value=${{ needs.build.outputs.version }},enable=${{ needs.build.outputs.release == 'true' }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.build.outputs.version }},enable=${{ needs.build.outputs.release == 'true' }}
             type=ref,event=branch
       - uses: docker/build-push-action@v6
         with:
@@ -62,6 +81,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: VERSION=${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
+          build-args: VERSION=${{ needs.build.outputs.release == 'true' && needs.build.outputs.version || github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
