@@ -383,8 +383,10 @@ func (a *App) view(w http.ResponseWriter, r *http.Request) {
 	// Bots get the file itself when the owner chose "raw" embeds, and always for videos and images:
 	// Discord/Element only show them inline from a direct link (og:* needs dimensions we don't store).
 	// X needs the card page (its bot ignores a bare image), so it keeps the og: tags.
-	media := strings.HasPrefix(v.Mime, "video/") || (inline(v.Mime) && strings.HasPrefix(v.Mime, "image/"))
-	if isBot(r.UserAgent()) && (v.EmbedRaw || (media && !strings.Contains(strings.ToLower(r.UserAgent()), "twitterbot"))) {
+	video := strings.HasPrefix(v.Mime, "video/")
+	img := inline(v.Mime) && strings.HasPrefix(v.Mime, "image/")
+	twitter := strings.Contains(strings.ToLower(r.UserAgent()), "twitterbot") // even with "raw" embeds: it shows nothing for a bare image
+	if isBot(r.UserAgent()) && (video || (!twitter && (v.EmbedRaw || img))) {
 		a.serveFile(w, r, v, false)
 		return
 	}
