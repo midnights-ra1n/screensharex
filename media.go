@@ -332,7 +332,7 @@ func (a *App) serveFile(w http.ResponseWriter, r *http.Request, v *mediaView, li
 
 func isBot(ua string) bool {
 	ua = strings.ToLower(ua)
-	for _, b := range []string{"discordbot", "telegrambot", "twitterbot", "slackbot", "whatsapp", "facebookexternalhit", "mastodon", "matrix", "skypeuripreview", "linkedinbot", "embedly"} {
+	for _, b := range []string{"discordbot", "telegrambot", "twitterbot", "slackbot", "whatsapp", "facebookexternalhit", "mastodon", "matrix", "synapse", "element", "skypeuripreview", "linkedinbot", "embedly"} {
 		if strings.Contains(ua, b) {
 			return true
 		}
@@ -380,9 +380,11 @@ func (a *App) view(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	// Bots get the file itself when the owner chose "raw" embeds, and always for videos:
-	// Discord only plays a video inline from a direct link (og:video needs dimensions we don't store).
-	if isBot(r.UserAgent()) && (v.EmbedRaw || strings.HasPrefix(v.Mime, "video/")) {
+	// Bots get the file itself when the owner chose "raw" embeds, and always for videos and images:
+	// Discord/Element only show them inline from a direct link (og:* needs dimensions we don't store).
+	// X needs the card page (its bot ignores a bare image), so it keeps the og: tags.
+	media := strings.HasPrefix(v.Mime, "video/") || (inline(v.Mime) && strings.HasPrefix(v.Mime, "image/"))
+	if isBot(r.UserAgent()) && (v.EmbedRaw || (media && !strings.Contains(strings.ToLower(r.UserAgent()), "twitterbot"))) {
 		a.serveFile(w, r, v, false)
 		return
 	}

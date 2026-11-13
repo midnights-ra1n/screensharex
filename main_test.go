@@ -96,6 +96,11 @@ func TestFlow(t *testing.T) {
 	req, _ := http.NewRequest("GET", up["url"].(string), nil)
 	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; Discordbot/2.0)")
 	resp, _ = http.DefaultClient.Do(req)
+	if resp.Header.Get("Content-Type") != "image/png" {
+		t.Fatal("discord should get the raw image", resp.Header)
+	}
+	req.Header.Set("User-Agent", "Twitterbot/1.0")
+	resp, _ = http.DefaultClient.Do(req)
 	var page bytes.Buffer
 	page.ReadFrom(resp.Body)
 	if !strings.Contains(page.String(), `og:image" content="`+up["raw"].(string)) {
